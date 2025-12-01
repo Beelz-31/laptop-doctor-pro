@@ -98,9 +98,14 @@ export const DiagnosticWizard = () => {
     }
 
     // Forward chaining logic
-    const categories = selectedSymptoms.map(id => 
-      symptoms.find(s => s.id === id)?.category || ""
-    );
+    const categories = selectedSymptoms
+      .map(id => symptoms.find(s => s.id === id)?.category)
+      .filter((cat): cat is string => Boolean(cat));
+
+    if (categories.length === 0) {
+      toast.error("Unable to categorize symptoms. Please try again.");
+      return;
+    }
 
     const categoryCount: Record<string, number> = {};
     categories.forEach(cat => {
@@ -108,13 +113,23 @@ export const DiagnosticWizard = () => {
     });
 
     const primaryCategory = Object.entries(categoryCount)
-      .sort(([,a], [,b]) => b - a)[0][0];
+      .sort(([,a], [,b]) => b - a)[0]?.[0];
+
+    if (!primaryCategory) {
+      toast.error("Unable to determine primary issue category");
+      return;
+    }
 
     const result = diagnosticRules[primaryCategory as keyof typeof diagnosticRules];
 
+    if (!result) {
+      toast.error("No diagnostic rules found for this category");
+      return;
+    }
+
     setDiagnosis({
       brand,
-      symptoms: selectedSymptoms.map(id => symptoms.find(s => s.id === id)?.label),
+      symptoms: selectedSymptoms.map(id => symptoms.find(s => s.id === id)?.label).filter(Boolean),
       primaryCategory,
       ...result,
       allCategories: Object.keys(categoryCount)
@@ -267,7 +282,7 @@ export const DiagnosticWizard = () => {
                     Possible Issues (Confidence: {diagnosis.confidence}%)
                   </h4>
                   <div className="space-y-2">
-                    {diagnosis.diagnoses.map((d: string, i: number) => (
+                    {diagnosis.diagnoses?.map((d: string, i: number) => (
                       <div
                         key={i}
                         className="p-3 border border-border rounded-lg hover:bg-muted/50 transition-smooth"
@@ -288,7 +303,7 @@ export const DiagnosticWizard = () => {
                     Recommended Actions
                   </h4>
                   <div className="space-y-2">
-                    {diagnosis.recommendations.map((rec: string, i: number) => (
+                    {diagnosis.recommendations?.map((rec: string, i: number) => (
                       <div
                         key={i}
                         className="p-3 bg-accent/10 border border-accent/20 rounded-lg"
@@ -306,7 +321,7 @@ export const DiagnosticWizard = () => {
                     <Badge className="bg-primary text-white">Symptoms Detected</Badge>
                     <div className="w-px h-8 bg-border" />
                     <div className="flex gap-2 flex-wrap justify-center">
-                      {diagnosis.allCategories.map((cat: string, i: number) => (
+                      {diagnosis.allCategories?.map((cat: string, i: number) => (
                         <Badge key={i} variant="secondary">{cat}</Badge>
                       ))}
                     </div>
